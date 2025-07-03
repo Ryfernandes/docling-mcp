@@ -38,6 +38,7 @@ classifiers = [
 ]
 requires-python = ">=3.10"
 dependencies = [
+    "anthropic>=0.56.0",
     "docling~=2.25",
     "httpx>=0.28.1",
     "llama-index>=0.12.33",
