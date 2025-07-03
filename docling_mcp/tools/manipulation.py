@@ -71,6 +71,45 @@ def get_overview_of_document_anchors(document_key: str) -> str:
 
     return "\n".join(lines)
 
+@mcp.tool()
+def find_text_in_document_anchors(document_key: str, search_text: str) -> str:
+    """Searches for a specific text within the document's anchors.
+
+    This tool checks all text items in a document with the given document_key and returns the anchors
+    of text items with the specified search_text
+
+    Args:
+        document_key (str): The unique identifier for the document in the local cache.
+        search_text (str): The text to search for within the document items.
+
+    Returns:
+        str: A formatted string listing all anchor references where the text was found,
+             or a message indicating no matches were found.
+
+    Raises:
+        ValueError: If the specified document_key does not exist in the local cache.
+
+    Example:
+        find_text_in_document_anchors(document_key="doc123", search_text="text to find")
+    """
+    if document_key not in local_document_cache:
+        doc_keys = ", ".join(local_document_cache.keys())
+        raise ValueError(
+            f"document-key: {document_key} is not found. Existing document-keys are: {doc_keys}"
+        )
+
+    doc = local_document_cache[document_key]
+    matches = []
+
+    for item, _ in doc.iterate_items():
+        if isinstance(item, TextItem) and search_text in item.text:
+            ref = item.get_ref()
+            matches.append(f"[anchor:{ref.cref}] {item.text}")
+
+    if matches:
+        return "Found text in anchors:\n" + "\n".join(matches)
+    else:
+        return f"No matches found for '{search_text}' in document with key {document_key}."
 
 @mcp.tool()
 def get_text_of_document_item_at_anchor(document_key: str, document_anchor: str) -> str:

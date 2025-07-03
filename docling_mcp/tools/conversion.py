@@ -56,7 +56,14 @@ def add_json_docling_document_to_local_cache(cache_key: str) -> tuple[bool, str]
             docling_document = DoclingDocument.load_from_json(file_path)
 
             local_document_cache[cache_key] = docling_document
-            local_stack_cache[cache_key] = []
+
+            item = docling_document.add_text(
+                label=DocItemLabel.TEXT,
+                text=f"document loaded from json with key: {cache_key}",
+                content_layer=ContentLayer.FURNITURE,
+            )
+
+            local_stack_cache[cache_key] = [item]
 
             logger.info(f"Successfully loaded and cached DoclingDocument for cache_key: {cache_key}")
             return True, cache_key
