@@ -1,6 +1,7 @@
 """Tools for converting documents into DoclingDocument objects."""
 
 import gc
+import os
 from typing import Annotated, Any
 
 from mcp.shared.exceptions import McpError
@@ -18,8 +19,9 @@ from docling_core.types.doc.document import (
 from docling_core.types.doc.labels import (
     DocItemLabel,
 )
+from docling_core.types.doc.document import DoclingDocument
 
-from docling_mcp.docling_cache import get_cache_key
+from docling_mcp.docling_cache import get_cache_key, get_cache_dir
 from docling_mcp.logger import setup_logger
 from docling_mcp.shared import local_document_cache, local_stack_cache, mcp
 
@@ -31,6 +33,38 @@ def cleanup_memory() -> None:
     """Force garbage collection to free up memory."""
     logger.info("Performed memory cleanup")
     gc.collect()
+
+@mcp.tool()
+def add_json_docling_document_to_local_cache(cache_key: str) -> tuple[bool, str]:
+    """Loads a Docling Document from a json file on the disk and stores it in the local cache
+    
+    Args:
+        cache_key: Document identifier from the original save to json. Current name of the file
+    
+    Returns:
+        This tool returns a tuple, the first element being a boolean indication of success, and the
+        second element being a string with the cache_key for future access if successful, or an error
+        message if not.
+    """
+    cache_dir = get_cache_dir()
+    file_path = cache_dir / f"{cache_key}.json"
+
+    if os.path.exists(file_path):
+        try:
+            # Load the JSON file as a DoclingDocument
+            logger.info(f"Loading DoclingDocument from {file_path}")
+            docling_document = DoclingDocument.load_from_json(file_path)
+
+            local_document_cache[cache_key] = docling_document
+            local_stack_cache[cache_key] = []
+
+            logger.info(f"Successfully loaded and cached DoclingDocument for cache_key: {cache_key}")
+            return True, cache_key
+        except:
+            return False, f"JSON file for cache_key {cache_key} exists, but could not be loaded as a DoclingDocument."
+    
+    return False, f"JSON file for cache_key {cache_key} does not exist."
+
 
 
 @mcp.tool()
