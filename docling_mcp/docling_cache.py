@@ -6,6 +6,9 @@ import os
 import sys
 from pathlib import Path
 from typing import Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 from docling_mcp.logger import setup_logger
 

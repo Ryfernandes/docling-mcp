@@ -7,6 +7,7 @@ import typer
 
 from docling_mcp.logger import setup_logger
 from docling_mcp.shared import mcp
+
 from docling_mcp.tools.conversion import (
     convert_pdf_document_into_json_docling_document_from_uri_path,
     is_document_in_local_cache,
@@ -52,11 +53,10 @@ class TransportType(str, enum.Enum):
     SSE = "sse"
     STREAMABLE_HTTP = "streamable-http"
 
-
 @app.command()
 def main(
     transport: TransportType = TransportType.STDIO,
-    http_port: int = 8000,
+    http_port: int = 8000
 ) -> None:
     """Initialize and run the Docling MCP server."""
     # Create a default project logger
