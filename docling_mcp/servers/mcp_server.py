@@ -11,6 +11,11 @@ import docling_mcp.tools.manipulation
 from docling_mcp.logger import setup_logger
 from docling_mcp.shared import mcp
 
+from docling_mcp.tools.disk_access import (
+    add_docling_document_from_disk_to_cache,
+    get_json_cache_keys,
+)
+
 if (
     os.getenv("RAG_ENABLED") == "true"
     and os.getenv("OLLAMA_MODEL") != ""
