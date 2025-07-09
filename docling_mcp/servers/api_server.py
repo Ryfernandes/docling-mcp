@@ -1,11 +1,11 @@
 """This module initializes and runs a sidecar FastAPI server to deterministically interact with the files in docling-mcp's local cache."""
 
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 
 import typer
 import uvicorn
-import os
 
 from docling_mcp.docling_cache import get_cache_dir
 
@@ -13,6 +13,14 @@ CACHE_DIR = get_cache_dir()
 
 app = typer.Typer()
 api_app = FastAPI()
+
+api_app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["http://localhost:3000"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 @api_app.get("/cache/{cache_key}", response_class=FileResponse)
 def get_markdown(cache_key: str):
