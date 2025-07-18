@@ -17,6 +17,7 @@ from docling_core.types.doc.document import (
 
 from docling_mcp.logger import setup_logger
 from docling_mcp.shared import local_document_cache, mcp
+import docling_mcp.shared as shared
 
 # Create a default project logger
 logger = setup_logger()
@@ -40,29 +41,21 @@ class DocumentAnchorOutput:
 
 @mcp.tool(title="Get overview of Docling document anchors")
 def get_overview_of_document_anchors(
-    document_key: Annotated[
-        str,
-        Field(description="The unique identifier of the document in the local cache."),
-    ],
 ) -> DocumentAnchorOutput:
-    """Retrieve a structured overview of a document from the local document cache.
+    """Retrieve a structured overview of the shared Docling Document object.
 
     This tool returns a text representation of the Docling document's structure,
     showing the hierarchy and types of elements within the document. Each line in the
     output includes the document anchor reference and item label.
     """
-    if document_key not in local_document_cache:
-        doc_keys = ", ".join(local_document_cache.keys())
+    if not shared.document:
         raise ValueError(
-            f"document-key: {document_key} is not found. Existing document-keys are: "
-            f"{doc_keys}"
+            "Document has not been initialized. Please load a document first."
         )
-
-    doc = local_document_cache[document_key]
 
     lines = []
     slevel = 0
-    for item, level in doc.iterate_items():
+    for item, level in shared.document.iterate_items():
         ref = item.get_ref()
 
         if isinstance(item, DocItem):
@@ -106,10 +99,6 @@ class TextSearchOutput:
 
 @mcp.tool(title="Search for text in Docling document anchors")
 def search_for_text_in_document_anchors(
-    document_key: Annotated[
-        str,
-        Field(description="The unique identifier of the document in the local cache."),
-    ],
     text: Annotated[
         str,
         Field(
@@ -125,18 +114,16 @@ def search_for_text_in_document_anchors(
     within the text, splitting it on non-alphanumeric characters. If keywords
     are found, they are listed alongside their number of occurrences in parentheses.
     """
-    if document_key not in local_document_cache:
-        doc_keys = ", ".join(local_document_cache.keys())
+    if not shared.document:
         raise ValueError(
-            f"document-key: {document_key} is not found. Existing document-keys are: {doc_keys}"
+            "Document has not been initialized. Please load a document first."
         )
 
-    doc = local_document_cache[document_key]
     exact_matches = []
     matches = []
     keywords_set = {word for word in set(re.findall(r"\b\w+\b", text.lower())) if word}
 
-    for item, _ in doc.iterate_items():
+    for item, _ in shared.document.iterate_items():
         if isinstance(item, TextItem):
             ref = item.get_ref()
 
@@ -183,7 +170,7 @@ def search_for_text_in_document_anchors(
             )
         )
     return TextSearchOutput(
-        f"No exact text matches nor individual keyword matches found for '{text}' in document with key {document_key}."
+        f"No exact text matches nor individual keyword matches found for '{text}' in the shared Docling Document object."
     )
 
 
@@ -199,10 +186,6 @@ class DocumentItemText:
 
 @mcp.tool(title="Get text of Docling document item at anchor")
 def get_text_of_document_item_at_anchor(
-    document_key: Annotated[
-        str,
-        Field(description="The unique identifier of the document in the local cache."),
-    ],
     document_anchor: Annotated[
         str,
         Field(
@@ -217,35 +200,38 @@ def get_text_of_document_item_at_anchor(
     """Retrieve the text content of a specific document item identified by its anchor.
 
     This tool extracts the text from a Docling document item at the specified anchor
-    location within a document that exists in the local document cache.
+    location within the existing shared Docling Document object.
     """
-    if document_key not in local_document_cache:
-        doc_keys = ", ".join(local_document_cache.keys())
+    if not shared.document:
         raise ValueError(
-            f"document-key: {document_key} is not found. Existing document-keys are: {doc_keys}"
+            "Document has not been initialized. Please load a document first."
         )
 
-    doc = local_document_cache[document_key]
-
     ref = RefItem(cref=document_anchor)
-    item = ref.resolve(doc=doc)
+    item = ref.resolve(doc=shared.document)
 
     if isinstance(item, TextItem):
         text = item.text
     else:
         raise ValueError(
-            f"Item at {document_anchor} for document-key: {document_key} is not a textual item."
+            f"Item at {document_anchor} for the shared Docling Document is not a textual item."
         )
 
     return DocumentItemText(text)
 
+@dataclass
+class TextUpdateOutput:
+    """Output of the update_text_of_document_item_at_anchor tool."""
+
+    success: Annotated[
+        bool,
+        Field(description="Indicates whether the text update was successful."),
+    ]
+
+    document: Annotated[object, Field(description="The json representation of the document.")]
 
 @mcp.tool(title="Update text of Docling document item at anchor")
 def update_text_of_document_item_at_anchor(
-    document_key: Annotated[
-        str,
-        Field(description="The unique identifier of the document in the local cache."),
-    ],
     document_anchor: Annotated[
         str,
         Field(
@@ -260,42 +246,44 @@ def update_text_of_document_item_at_anchor(
         str,
         Field(description="The new text content to replace the existing content."),
     ],
-) -> bool:
+) -> TextUpdateOutput:
     """Update the text content of a specific document item identified by its anchor.
 
     This tool modifies the text of an existing document item at the specified anchor
-    location within a document that exists in the local document cache. It returns
+    location within the existing shared Docling Document object. It returns
     True if the update was successful.
     """
-    if document_key not in local_document_cache:
-        doc_keys = ", ".join(local_document_cache.keys())
-        raise ValueError(
-            f"document-key: {document_key} is not found. Existing document-keys are: "
-            f"{doc_keys}"
-        )
-
-    doc = local_document_cache[document_key]
+    if not shared.document:
+            raise ValueError(
+                "Document has not been initialized. Please load a document first."
+            )
 
     ref = RefItem(cref=document_anchor)
-    item = ref.resolve(doc=doc)
+    item = ref.resolve(doc=shared.document)
 
     if isinstance(item, TextItem):
         item.text = updated_text
     else:
         raise ValueError(
-            f"Item at {document_anchor} for document-key: {document_key} is not a "
+            f"Item at {document_anchor} for the shared Docling Document object is not a "
             "textual item."
         )
 
-    return True
+    return TextUpdateOutput(True, shared.document.export_to_dict())
 
+@dataclass
+class DeleteDocumentItemsOutput:
+    """Output of the delete_document_items_at_anchors tool."""
+
+    success: Annotated[
+        bool,
+        Field(description="Indicates whether the deletion was successful."),
+    ]
+
+    document: Annotated[object, Field(description="The json representation of the document.")]
 
 @mcp.tool(title="Delete Docling document items at anchors")
 def delete_document_items_at_anchors(
-    document_key: Annotated[
-        str,
-        Field(description="The unique identifier of the document in the local cache."),
-    ],
     document_anchors: Annotated[
         list[str],
         Field(
@@ -306,26 +294,23 @@ def delete_document_items_at_anchors(
             examples=["#/texts/2", "#/tables/1"],
         ),
     ],
-) -> bool:
+) -> DeleteDocumentItemsOutput:
     """Delete multiple document items identified by their anchors.
 
-    This tool removes specified items from a Docling document that exists in the local
-    document cache, based on their anchor references. It returns True if the all the
+    This tool removes specified items from the existing share Docling Document 
+    object, based on their anchor references. It returns True if the all the
     items were successfully removed.
     """
-    if document_key not in local_document_cache:
-        doc_keys = ", ".join(local_document_cache.keys())
-        raise ValueError(
-            f"document-key: {document_key} is not found. Existing document-keys are: {doc_keys}"
-        )
-
-    doc = local_document_cache[document_key]
+    if not shared.document:
+            raise ValueError(
+                "Document has not been initialized. Please load a document first."
+            )
 
     items = []
     for _ in document_anchors:
         ref = RefItem(cref=_)
-        items.append(ref.resolve(doc=doc))
+        items.append(ref.resolve(doc=shared.document))
 
-    doc.delete_items(node_items=items)
+    shared.document.delete_items(node_items=items)
 
-    return True
+    return DeleteDocumentItemsOutput(True, shared.document.export_to_dict())
