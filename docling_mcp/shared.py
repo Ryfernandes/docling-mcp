@@ -23,7 +23,9 @@ load_dotenv()
 mcp = FastMCP("docling")
 
 # Create a single docling document for the backend
-document: DoclingDocument = DoclingDocument.load_from_json("./_cache/0e752afdb58839246b25f8d9aaafa4d4.json")
+document: DoclingDocument = DoclingDocument.load_from_json(
+    "./_cache/0e752afdb58839246b25f8d9aaafa4d4.json"
+)
 stack_cache: list[NodeItem] = [document.body.children[-1].resolve(doc=document)]
 
 # Define your shared cache here if it's used by multiple tools

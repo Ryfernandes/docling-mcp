@@ -4,17 +4,18 @@ import enum
 import os
 
 import typer
+from fastapi import Request
+from fastapi.responses import JSONResponse
 
-#import docling_mcp.tools.conversion
+from docling_core.types.doc.document import DoclingDocument
+
+import docling_mcp.shared as shared
+
+# import docling_mcp.tools.conversion
 import docling_mcp.tools.generation
 import docling_mcp.tools.manipulation
 from docling_mcp.logger import setup_logger
 from docling_mcp.shared import mcp
-import docling_mcp.shared as shared
-from docling_core.types.doc.document import DoclingDocument
-
-from fastapi import Request
-from fastapi.responses import JSONResponse
 
 if (
     os.getenv("RAG_ENABLED") == "true"
@@ -28,21 +29,24 @@ if (
 
 app = typer.Typer()
 
+
 @mcp.custom_route("/document", methods=["POST"])
 async def upload_document(request: Request) -> None:
+    """Upload a document to the Docling MCP server."""
     json_data = await request.json()
 
-    if 'document' in json_data:
+    if "document" in json_data:
         shared.document = DoclingDocument.model_validate(json_data["document"])
         return JSONResponse(
             content={"message": "Document uploaded successfully."},
             status_code=200,
         )
-    
+
     return JSONResponse(
         content={"error": "No document provided in the request."},
         status_code=400,
     )
+
 
 class TransportType(str, enum.Enum):
     """List of available protocols."""

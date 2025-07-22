@@ -15,9 +15,9 @@ from docling_core.types.doc.document import (
     TitleItem,
 )
 
-from docling_mcp.logger import setup_logger
-from docling_mcp.shared import local_document_cache, mcp
 import docling_mcp.shared as shared
+from docling_mcp.logger import setup_logger
+from docling_mcp.shared import mcp
 
 # Create a default project logger
 logger = setup_logger()
@@ -40,8 +40,7 @@ class DocumentAnchorOutput:
 
 
 @mcp.tool(title="Get overview of Docling document anchors")
-def get_overview_of_document_anchors(
-) -> DocumentAnchorOutput:
+def get_overview_of_document_anchors() -> DocumentAnchorOutput:
     """Retrieve a structured overview of the shared Docling Document object.
 
     This tool returns a text representation of the Docling document's structure,
@@ -219,6 +218,7 @@ def get_text_of_document_item_at_anchor(
 
     return DocumentItemText(text)
 
+
 @dataclass
 class TextUpdateOutput:
     """Output of the update_text_of_document_item_at_anchor tool."""
@@ -228,7 +228,10 @@ class TextUpdateOutput:
         Field(description="Indicates whether the text update was successful."),
     ]
 
-    document: Annotated[object, Field(description="The json representation of the document.")]
+    document: Annotated[
+        object, Field(description="The json representation of the document.")
+    ]
+
 
 @mcp.tool(title="Update text of Docling document item at anchor")
 def update_text_of_document_item_at_anchor(
@@ -254,9 +257,9 @@ def update_text_of_document_item_at_anchor(
     True if the update was successful.
     """
     if not shared.document:
-            raise ValueError(
-                "Document has not been initialized. Please load a document first."
-            )
+        raise ValueError(
+            "Document has not been initialized. Please load a document first."
+        )
 
     ref = RefItem(cref=document_anchor)
     item = ref.resolve(doc=shared.document)
@@ -271,6 +274,7 @@ def update_text_of_document_item_at_anchor(
 
     return TextUpdateOutput(True, shared.document.export_to_dict())
 
+
 @dataclass
 class DeleteDocumentItemsOutput:
     """Output of the delete_document_items_at_anchors tool."""
@@ -280,7 +284,10 @@ class DeleteDocumentItemsOutput:
         Field(description="Indicates whether the deletion was successful."),
     ]
 
-    document: Annotated[object, Field(description="The json representation of the document.")]
+    document: Annotated[
+        object, Field(description="The json representation of the document.")
+    ]
+
 
 @mcp.tool(title="Delete Docling document items at anchors")
 def delete_document_items_at_anchors(
@@ -297,14 +304,14 @@ def delete_document_items_at_anchors(
 ) -> DeleteDocumentItemsOutput:
     """Delete multiple document items identified by their anchors.
 
-    This tool removes specified items from the existing share Docling Document 
+    This tool removes specified items from the existing share Docling Document
     object, based on their anchor references. It returns True if the all the
     items were successfully removed.
     """
     if not shared.document:
-            raise ValueError(
-                "Document has not been initialized. Please load a document first."
-            )
+        raise ValueError(
+            "Document has not been initialized. Please load a document first."
+        )
 
     items = []
     for _ in document_anchors:

@@ -13,8 +13,6 @@ from docling.datamodel.document import (
 )
 from docling.document_converter import DocumentConverter
 from docling_core.types.doc.document import (
-    ContentLayer,
-    DoclingDocument,
     GroupItem,
     LevelNumber,
 )
@@ -24,10 +22,9 @@ from docling_core.types.doc.labels import (
 )
 from docling_core.types.io import DocumentStream
 
-from docling_mcp.docling_cache import get_cache_dir
-from docling_mcp.logger import setup_logger
-from docling_mcp.shared import local_document_cache, local_stack_cache, mcp, stack_cache
 import docling_mcp.shared as shared
+from docling_mcp.logger import setup_logger
+from docling_mcp.shared import mcp, stack_cache
 
 # Create a default project logger
 logger = setup_logger()
@@ -44,7 +41,10 @@ class NewDoclingDocumentOutput:
 
     prompt: Annotated[str, Field(description="The original prompt.")]
 
-    document: Annotated[object, Field(description="The json representation of the document.")]
+    document: Annotated[
+        object, Field(description="The json representation of the document.")
+    ]
+
 
 """
 @mcp.tool(title="Create new Docling document")
@@ -72,6 +72,7 @@ def create_new_docling_document(
     return NewDoclingDocumentOutput(prompt, document.export_to_dict())
 """
 
+
 @dataclass
 class ExportDocumentMarkdownOutput:
     """Output of the export_docling_document_to_markdown tool."""
@@ -82,8 +83,7 @@ class ExportDocumentMarkdownOutput:
 
 
 @mcp.tool(title="Export Docling document to markdown format")
-def export_docling_document_to_markdown(
-) -> ExportDocumentMarkdownOutput:
+def export_docling_document_to_markdown() -> ExportDocumentMarkdownOutput:
     """Export the shared Docling Document object to markdown format.
 
     This tool converts the shared Docling Document object into
@@ -93,16 +93,20 @@ def export_docling_document_to_markdown(
         raise ValueError(
             "Document has not been initialized. Please load a document first."
         )
-    
+
     markdown = shared.document.export_to_markdown()
 
     return ExportDocumentMarkdownOutput(markdown)
+
 
 @dataclass
 class DocumentUpdateOutput:
     """Output of the tools that update the Docling document."""
 
-    document: Annotated[object, Field(description="The json representation of the document.")]
+    document: Annotated[
+        object, Field(description="The json representation of the document.")
+    ]
+
 
 @mcp.tool(title="Add or update title to Docling document")
 def add_title_to_docling_document(
@@ -122,7 +126,7 @@ def add_title_to_docling_document(
 
     if len(stack_cache) == 0:
         raise ValueError(
-            f"Stack size is zero for the shared Docling Document. Abort document generation"
+            "Stack size is zero for the shared Docling Document. Abort document generation"
         )
 
     parent = stack_cache[-1]
@@ -164,7 +168,7 @@ def add_section_heading_to_docling_document(
 
     if len(stack_cache) == 0:
         raise ValueError(
-            f"Stack size is zero for the shared Docling Document. Abort document generation"
+            "Stack size is zero for the shared Docling Document. Abort document generation"
         )
 
     parent = stack_cache[-1]
@@ -175,9 +179,7 @@ def add_section_heading_to_docling_document(
                 "A list is currently opened. Please close the list before adding a section-heading!"
             )
 
-    item = shared.document.add_heading(
-        text=section_heading, level=section_level
-    )
+    item = shared.document.add_heading(text=section_heading, level=section_level)
     stack_cache[-1] = item
 
     return DocumentUpdateOutput(shared.document.export_to_dict())
@@ -201,7 +203,7 @@ def add_paragraph_to_docling_document(
 
     if len(stack_cache) == 0:
         raise ValueError(
-            f"Stack size is zero for the shared Docling Document. Abort document generation"
+            "Stack size is zero for the shared Docling Document. Abort document generation"
         )
 
     parent = stack_cache[-1]
@@ -212,9 +214,7 @@ def add_paragraph_to_docling_document(
                 "A list is currently opened. Please close the list before adding a paragraph!"
             )
 
-    item = shared.document.add_text(
-        label=DocItemLabel.TEXT, text=paragraph
-    )
+    item = shared.document.add_text(label=DocItemLabel.TEXT, text=paragraph)
     stack_cache[-1] = item
 
     return DocumentUpdateOutput(shared.document.export_to_dict())
@@ -235,7 +235,7 @@ def open_list_in_docling_document() -> DocumentUpdateOutput:
 
     if len(stack_cache) == 0:
         raise ValueError(
-            f"Stack size is zero for the shared Docling Document. Abort document generation"
+            "Stack size is zero for the shared Docling Document. Abort document generation"
         )
 
     item = shared.document.add_group(label=GroupLabel.LIST)
@@ -259,7 +259,7 @@ def close_list_in_docling_document() -> DocumentUpdateOutput:
 
     if len(stack_cache) == 0:
         raise ValueError(
-            f"Stack size is zero for the shared Docling Document. Abort document generation"
+            "Stack size is zero for the shared Docling Document. Abort document generation"
         )
 
     stack_cache.pop()
@@ -295,9 +295,9 @@ def add_list_items_to_list_in_docling_document(
 
     if len(stack_cache) == 0:
         raise ValueError(
-            f"Stack size is zero for the shared Docling Document. Abort document generation"
+            "Stack size is zero for the shared Docling Document. Abort document generation"
         )
-    
+
     parent = stack_cache[-1]
 
     if isinstance(parent, GroupItem):
@@ -354,7 +354,7 @@ def add_table_in_html_format_to_docling_document(
 
     if len(stack_cache) == 0:
         raise ValueError(
-            f"Stack size is zero for the shared Docling Document. Abort document generation"
+            "Stack size is zero for the shared Docling Document. Abort document generation"
         )
 
     html_doc: str = f"<html><body>{html_table}</body></html>"
@@ -382,5 +382,5 @@ def add_table_in_html_format_to_docling_document(
         raise ValueError(
             "Could not parse the html string of the table! Please fix the html and try again!"
         )
-    
+
     return DocumentUpdateOutput(shared.document.export_to_dict())
