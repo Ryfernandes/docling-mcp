@@ -15,6 +15,8 @@ from docling.document_converter import DocumentConverter
 from docling_core.types.doc.document import (
     GroupItem,
     LevelNumber,
+    RefItem,
+    NodeItem,
 )
 from docling_core.types.doc.labels import (
     DocItemLabel,
@@ -33,6 +35,16 @@ logger = setup_logger()
 def hash_string_md5(input_string: str) -> str:
     """Creates an md5 hash-string from the input string."""
     return hashlib.md5(input_string.encode()).hexdigest()
+
+def resolve(anchor: str | RefItem) -> NodeItem:
+    ref: RefItem = None
+    
+    if isinstance(anchor, RefItem):
+        ref = anchor
+    else:
+        ref = RefItem(cref=anchor)
+    return ref.resolve(shared.document)
+
 
 
 @dataclass
@@ -108,16 +120,28 @@ class DocumentUpdateOutput:
     ]
 
 
-@mcp.tool(title="Add or update title to Docling document")
+@mcp.tool(title="Insert or append a title to Docling document")
 def add_title_to_docling_document(
     title: Annotated[
         str, Field(description="The title text to add or update to the document.")
     ],
+    sibling_anchor: Annotated[
+        str | None, Field(description="The anchor of the sibling item to insert the title before.")
+    ] = None,
+    insert_after: Annotated[
+        bool, Field(description="Whether to insert the title after the sibling item. Defaults to inserting before.")
+    ] = False,
+    parent_anchor: Annotated[
+        str | None, Field(description="The anchor of the parent item to insert the title under.")
+    ] = None,
 ) -> DocumentUpdateOutput:
-    """Add or update the title of the shared Docling Document object.
+    """Insert a title by specifying sibling_anchor or append a title by specifying parent_anchor in a Docling Document object.
+
+    When 'replacing' an item with a title, the sibling_anchor must be provided to specify where the new title should be inserted.
+    Then, the old item should be deleted with a separate tool call.
 
     This tool modifies the existing shared Docling Document object.
-    It requires that the document already exists before a title can be added.
+    It requires that the document already exists before a title can be inserted/appended.
     """
     if not shared.document:
         raise ValueError(
@@ -128,7 +152,47 @@ def add_title_to_docling_document(
         raise ValueError(
             "Stack size is zero for the shared Docling Document. Abort document generation"
         )
+    
+    if sibling_anchor:
+        try:
+            sibling = resolve(sibling_anchor)
 
+            if sibling.parent is None or sibling.parent == shared.document.body.get_ref():
+                parent = shared.document.body
+            else:
+                parent = resolve(sibling.parent)
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid sibling-anchor: {sibling_anchor}. "
+            ) from e
+
+        if isinstance(parent, GroupItem):
+            if parent.label == GroupLabel.LIST or parent.label == GroupLabel.ORDERED_LIST:
+                raise ValueError(
+                    "You are attempting to insert a title within a list, which is not allowed. Please choose a different location to insert the title"
+                )
+
+        shared.document.insert_title(sibling=sibling, text=title, after=insert_after)
+
+        return DocumentUpdateOutput(shared.document.export_to_dict())
+    if parent_anchor:
+        try:
+            parent = resolve(parent_anchor)
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid parent-anchor: {parent_anchor}. "
+            ) from e
+
+        if isinstance(parent, GroupItem):
+            if parent.label == GroupLabel.LIST or parent.label == GroupLabel.ORDERED_LIST:
+                raise ValueError(
+                    "You are attempting to append a title within a list, which is not allowed. Please choose a different location to append the title"
+                )
+
+        shared.document.add_title(parent=parent, text=title)
+
+        return DocumentUpdateOutput(shared.document.export_to_dict())
+    
     parent = stack_cache[-1]
 
     if isinstance(parent, GroupItem):
