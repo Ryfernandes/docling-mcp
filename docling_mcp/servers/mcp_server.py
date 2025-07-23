@@ -10,12 +10,20 @@ from fastapi.responses import JSONResponse
 from docling_core.types.doc.document import DoclingDocument
 
 import docling_mcp.shared as shared
+from datetime import datetime
 
 # import docling_mcp.tools.conversion
 import docling_mcp.tools.generation
 import docling_mcp.tools.manipulation
 from docling_mcp.logger import setup_logger
 from docling_mcp.shared import mcp
+
+from docling_core.types.doc.labels import (
+    DocItemLabel,
+)
+from docling_core.types.doc.document import (
+    ContentLayer,
+)
 
 if (
     os.getenv("RAG_ENABLED") == "true"
@@ -37,6 +45,15 @@ async def upload_document(request: Request) -> None:
 
     if "document" in json_data:
         shared.document = DoclingDocument.model_validate(json_data["document"])
+
+        item = shared.document.add_text(
+            label=DocItemLabel.TEXT,
+            text=f"document uploaded: {datetime.now()}",
+            content_layer=ContentLayer.FURNITURE,
+        )
+
+        shared.stack_cache = [item]
+
         return JSONResponse(
             content={"message": "Document uploaded successfully."},
             status_code=200,
