@@ -26,11 +26,9 @@ mcp = FastMCP("docling")
 document: DoclingDocument = DoclingDocument.load_from_json(
     "./_cache/0e752afdb58839246b25f8d9aaafa4d4.json"
 )
-stack_cache: list[NodeItem] = [document.body.children[-1].resolve(doc=document)]
 
 # Define your shared cache here if it's used by multiple tools
 local_document_cache: dict[str, DoclingDocument] = {}
-local_stack_cache: dict[str, list[NodeItem]] = {}
 
 OLLAMA_MODEL: str | None = os.getenv("OLLAMA_MODEL")
 EMBEDDING_MODEL: str | None = os.getenv("EMBEDDING_MODEL")

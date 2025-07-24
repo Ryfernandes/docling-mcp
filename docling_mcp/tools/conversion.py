@@ -23,7 +23,7 @@ from docling_core.types.doc.labels import (
 
 from docling_mcp.docling_cache import get_cache_key
 from docling_mcp.logger import setup_logger
-from docling_mcp.shared import local_document_cache, local_stack_cache, mcp
+from docling_mcp.shared import local_document_cache, mcp
 
 # Create a default project logger
 logger = setup_logger()
@@ -150,14 +150,6 @@ def convert_pdf_document_into_docling_document(
             raise McpError(ErrorData(code=INTERNAL_ERROR, message=error_msg))
 
         local_document_cache[cache_key] = result.document
-
-        item = result.document.add_text(
-            label=DocItemLabel.TEXT,
-            text=f"source: {source}",
-            content_layer=ContentLayer.FURNITURE,
-        )
-
-        local_stack_cache[cache_key] = [item]
 
         # Log completion
         logger.info(f"Successfully created the Docling document: {source}")

@@ -26,7 +26,7 @@ from docling_core.types.io import DocumentStream
 
 import docling_mcp.shared as shared
 from docling_mcp.logger import setup_logger
-from docling_mcp.shared import mcp, stack_cache
+from docling_mcp.shared import mcp
 
 # Create a default project logger
 logger = setup_logger()
@@ -118,6 +118,9 @@ class DocumentUpdateOutput:
     document: Annotated[
         object, Field(description="The json representation of the document.")
     ]
+    anchor: Annotated[
+        str | None, Field(description="The document anchor of the item that was updated or created.")
+    ]
 
 
 @mcp.tool(title="Insert or append a title to Docling document")
@@ -141,11 +144,6 @@ def add_title_to_docling_document(
         raise ValueError(
             "Document has not been initialized. Please load a document first."
         )
-
-    if len(stack_cache) == 0:
-        raise ValueError(
-            "Stack size is zero for the shared Docling Document. Abort document generation"
-        )
     
     if sibling_anchor:
         try:
@@ -166,9 +164,9 @@ def add_title_to_docling_document(
                     "You are attempting to insert a title within a list, which is not allowed. Please choose a different location to insert the title"
                 )
 
-        shared.document.insert_title(sibling=sibling, text=title, after=insert_after)
+        item = shared.document.insert_title(sibling=sibling, text=title, after=insert_after)
 
-        return DocumentUpdateOutput(shared.document.export_to_dict())
+        return DocumentUpdateOutput(shared.document.export_to_dict(), item.self_ref)
     if parent_anchor:
         try:
             parent = resolve(parent_anchor)
@@ -183,22 +181,13 @@ def add_title_to_docling_document(
                     "You are attempting to append a title within a list, which is not allowed. Please choose a different location to append the title"
                 )
 
-        shared.document.add_title(parent=parent, text=title)
+        item = shared.document.add_title(parent=parent, text=title)
 
-        return DocumentUpdateOutput(shared.document.export_to_dict())
-    
-    parent = stack_cache[-1]
-
-    if isinstance(parent, GroupItem):
-        if parent.label == GroupLabel.LIST or parent.label == GroupLabel.ORDERED_LIST:
-            raise ValueError(
-                "A list is currently opened. Please close the list before adding a title!"
-            )
+        return DocumentUpdateOutput(shared.document.export_to_dict(), item.self_ref)
 
     item = shared.document.add_title(text=title)
-    stack_cache[-1] = item
 
-    return DocumentUpdateOutput(shared.document.export_to_dict())
+    return DocumentUpdateOutput(shared.document.export_to_dict(), item.self_ref)
 
 
 @mcp.tool(title="Insert or append a section heading to Docling document")
@@ -230,11 +219,6 @@ def add_section_heading_to_docling_document(
         raise ValueError(
             "Document has not been initialized. Please load a document first."
         )
-
-    if len(stack_cache) == 0:
-        raise ValueError(
-            "Stack size is zero for the shared Docling Document. Abort document generation"
-        )
     
     if sibling_anchor:
         try:
@@ -255,9 +239,9 @@ def add_section_heading_to_docling_document(
                     "You are attempting to insert a section heading within a list, which is not allowed. Please choose a different location to insert the section heading"
                 )
 
-        shared.document.insert_heading(sibling=sibling, text=section_heading, level=section_level, after=insert_after)
+        item = shared.document.insert_heading(sibling=sibling, text=section_heading, level=section_level, after=insert_after)
 
-        return DocumentUpdateOutput(shared.document.export_to_dict())
+        return DocumentUpdateOutput(shared.document.export_to_dict(), item.self_ref)
     if parent_anchor:
         try:
             parent = resolve(parent_anchor)
@@ -272,22 +256,13 @@ def add_section_heading_to_docling_document(
                     "You are attempting to append a section heading within a list, which is not allowed. Please choose a different location to append the section heading"
                 )
 
-        shared.document.add_heading(parent=parent, text=section_heading, level=section_level)
+        item = shared.document.add_heading(parent=parent, text=section_heading, level=section_level)
 
-        return DocumentUpdateOutput(shared.document.export_to_dict())
+        return DocumentUpdateOutput(shared.document.export_to_dict(), item.self_ref)
     
-    parent = stack_cache[-1]
-
-    if isinstance(parent, GroupItem):
-        if parent.label == GroupLabel.LIST or parent.label == GroupLabel.ORDERED_LIST:
-            raise ValueError(
-                "A list is currently opened. Please close the list before adding a section heading!"
-            )
-
     item = shared.document.add_heading(text=section_heading, level=section_level)
-    stack_cache[-1] = item
 
-    return DocumentUpdateOutput(shared.document.export_to_dict())
+    return DocumentUpdateOutput(shared.document.export_to_dict(), item.self_ref)
 
 
 @mcp.tool(title="Insert or append a paragraph to Docling document")
@@ -305,16 +280,11 @@ def add_paragraph_to_docling_document(
         str | None, Field(description="The anchor of the parent item to insert the paragraph under.")
     ] = None,
 ) -> DocumentUpdateOutput:
-    """Insert a paragraph by specifying sibling_anchor or append a title by specifying parent_anchor in a Docling Document object.
+    """Insert a paragraph by specifying sibling_anchor or append a paragraph by specifying parent_anchor in a Docling Document object.
     """
     if not shared.document:
         raise ValueError(
             "Document has not been initialized. Please load a document first."
-        )
-
-    if len(stack_cache) == 0:
-        raise ValueError(
-            "Stack size is zero for the shared Docling Document. Abort document generation"
         )
     
     if sibling_anchor:
@@ -336,9 +306,9 @@ def add_paragraph_to_docling_document(
                     "You are attempting to insert a paragraph within a list, which is not allowed. Please choose a different location to insert the paragraph"
                 )
 
-        shared.document.insert_text(sibling=sibling, text=paragraph, label=DocItemLabel.TEXT, after=insert_after)
+        item = shared.document.insert_text(sibling=sibling, text=paragraph, label=DocItemLabel.TEXT, after=insert_after)
 
-        return DocumentUpdateOutput(shared.document.export_to_dict())
+        return DocumentUpdateOutput(shared.document.export_to_dict(), item.self_ref)
     if parent_anchor:
         try:
             parent = resolve(parent_anchor)
@@ -353,69 +323,67 @@ def add_paragraph_to_docling_document(
                     "You are attempting to append a paragraph within a list, which is not allowed. Please choose a different location to append the paragraph"
                 )
 
-        shared.document.add_text(parent=parent, text=paragraph, label=DocItemLabel.TEXT)
+        item = shared.document.add_text(parent=parent, text=paragraph, label=DocItemLabel.TEXT)
 
-        return DocumentUpdateOutput(shared.document.export_to_dict())
+        return DocumentUpdateOutput(shared.document.export_to_dict(), item.self_ref)
     
-    parent = stack_cache[-1]
-
-    if isinstance(parent, GroupItem):
-        if parent.label == GroupLabel.LIST or parent.label == GroupLabel.ORDERED_LIST:
-            raise ValueError(
-                "A list is currently opened. Please close the list before adding a paragraph!"
-            )
-
     item = shared.document.add_text(text=paragraph, label=DocItemLabel.TEXT)
-    stack_cache[-1] = item
 
-    return DocumentUpdateOutput(shared.document.export_to_dict())
+    return DocumentUpdateOutput(shared.document.export_to_dict(), item.self_ref)
 
 
-@mcp.tool(title="Open list in Docling document")
-def open_list_in_docling_document() -> DocumentUpdateOutput:
-    """Open a new list group in the shared Docling Document object.
+@mcp.tool(title="Insert or append a list group to Docling document")
+def add_list_group_to_docling_document(
+    sibling_anchor: Annotated[
+        str | None, Field(description="The anchor of the sibling item to insert the list group before/after.")
+    ] = None,
+    insert_after: Annotated[
+        bool, Field(description="Whether to insert the list group after the sibling item. Defaults to inserting before.")
+    ] = False,
+    parent_anchor: Annotated[
+        str | None, Field(description="The anchor of the list group item to insert the paragraph under.")
+    ] = None,
+) -> DocumentUpdateOutput:
+    """Insert a list group by specifying sibling_anchor or append a list group by specifying parent_anchor in a Docling Document object.
 
-    This tool creates a new list structure within the existing shared Docling
-    Document object. It requires that the document already exists
-    and that there is at least one item in the document's stack cache.
+    List items can only be added to a list group, so this tool is the necessary first step when attempting to create a new list.
     """
     if not shared.document:
         raise ValueError(
             "Document has not been initialized. Please load a document first."
         )
+    
+    if sibling_anchor:
+        try:
+            sibling = resolve(sibling_anchor)
 
-    if len(stack_cache) == 0:
-        raise ValueError(
-            "Stack size is zero for the shared Docling Document. Abort document generation"
-        )
+            if sibling.parent is None or sibling.parent == shared.document.body.get_ref():
+                parent = shared.document.body
+            else:
+                parent = resolve(sibling.parent)
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid sibling-anchor: {sibling_anchor}. "
+            ) from e
 
-    item = shared.document.add_group(label=GroupLabel.LIST)
-    stack_cache.append(item)
+        item = shared.document.insert_list_group(sibling=sibling, after=insert_after)
 
-    return DocumentUpdateOutput(shared.document.export_to_dict())
+        return DocumentUpdateOutput(shared.document.export_to_dict(), item.self_ref)
+    if parent_anchor:
+        try:
+            parent = resolve(parent_anchor)
+        except ValueError as e:
+            raise ValueError(
+                f"Invalid parent-anchor: {parent_anchor}. "
+            ) from e
 
+        item = shared.document.add_list_group(parent=parent)
 
-@mcp.tool(title="Close list in Docling document")
-def close_list_in_docling_document() -> DocumentUpdateOutput:
-    """Closes a list group in the shared Docling Document object.
+        return DocumentUpdateOutput(shared.document.export_to_dict(), item.self_ref)
+    
+    item = shared.document.add_list_group()
 
-    This tool closes a previously opened list structure within a document.
-    It requires that the document exists and that there is more than one item
-    in the document's stack cache.
-    """
-    if not shared.document:
-        raise ValueError(
-            "Document has not been initialized. Please load a document first."
-        )
-
-    if len(stack_cache) == 0:
-        raise ValueError(
-            "Stack size is zero for the shared Docling Document. Abort document generation"
-        )
-
-    stack_cache.pop()
-
-    return DocumentUpdateOutput(shared.document.export_to_dict())
+    return DocumentUpdateOutput(shared.document.export_to_dict(), item.self_ref)
 
 
 @dataclass
@@ -425,6 +393,16 @@ class ListItem:
     list_item_text: Annotated[str, Field(description="The text of a list item.")]
     list_marker_text: Annotated[str, Field(description="The marker of a list item.")]
 
+@dataclass
+class DocumentBatchUpdateOutput:
+    """Output of the tools that update the Docling document with multiple items."""
+
+    document: Annotated[
+        object, Field(description="The json representation of the document.")
+    ]
+    anchors: Annotated[
+        list[str] | None, Field(description="A list of the document anchors of the items that were updated or created.")
+    ]
 
 @mcp.tool(title="Insert or append items to list in Docling document")
 def add_list_items_to_list_in_docling_document(
@@ -441,7 +419,7 @@ def add_list_items_to_list_in_docling_document(
     parent_anchor: Annotated[
         str | None, Field(description="The anchor of the parent item to insert the list items under.")
     ] = None,
-) -> DocumentUpdateOutput:
+) -> DocumentBatchUpdateOutput:
     """Insert list items by specifying sibling_anchor or append list items by specifying parent_anchor in a Docling Document object.
 
     List items will be added with their specified text and marker.
@@ -449,11 +427,6 @@ def add_list_items_to_list_in_docling_document(
     if not shared.document:
         raise ValueError(
             "Document has not been initialized. Please load a document first."
-        )
-
-    if len(stack_cache) == 0:
-        raise ValueError(
-            "Stack size is zero for the shared Docling Document. Abort document generation"
         )
     
     if sibling_anchor:
@@ -474,15 +447,19 @@ def add_list_items_to_list_in_docling_document(
                 "You are attempting to insert list items outside of a list, which is not allowed. Please choose a different location to insert the list items."
             )
 
+        refs = []
+
         for list_item in reversed(list_items):
-            shared.document.insert_list_item(
+            item = shared.document.insert_list_item(
                 text=list_item.list_item_text,
                 marker=list_item.list_marker_text,
                 sibling=sibling,
                 after=insert_after,
             )
 
-        return DocumentUpdateOutput(shared.document.export_to_dict())
+            refs.append(item.self_ref)
+
+        return DocumentBatchUpdateOutput(shared.document.export_to_dict(), refs)
     if parent_anchor:
         try:
             parent = resolve(parent_anchor)
@@ -495,37 +472,23 @@ def add_list_items_to_list_in_docling_document(
             raise ValueError(
                 "You are attempting to append list items outside of a list, which is not allowed. Please choose a different parent under which to append the list items."
             )
+        
+        refs = []
 
         for list_item in reversed(list_items):
-            shared.document.add_list_item(
+            item = shared.document.add_list_item(
                 text=list_item.list_item_text,
                 marker=list_item.list_marker_text,
-                parent=parent,
-                after=insert_after,
+                parent=parent
             )
 
-        return DocumentUpdateOutput(shared.document.export_to_dict())
+            refs.append(item.self_ref)
+
+        return DocumentBatchUpdateOutput(shared.document.export_to_dict(), refs)
     
-    parent = stack_cache[-1]
-
-    if isinstance(parent, GroupItem):
-        if parent.label != GroupLabel.LIST and parent.label != GroupLabel.ORDERED_LIST:
-            raise ValueError(
-                "No list is currently opened. Please open a list before adding list-items!"
-            )
-    else:
-        raise ValueError(
-            "No list is currently opened. Please open a list before adding list-items!"
-        )
-
-    for list_item in list_items:
-        shared.document.add_list_item(
-            text=list_item.list_item_text,
-            marker=list_item.list_marker_text,
-            parent=parent,
-        )
-
-    return DocumentUpdateOutput(shared.document.export_to_dict())
+    raise ValueError(
+        "List items much be added under a group (list or ordered list) parent. Thus, either a sibling_anchor or parent_anchor must be provided."
+    )
 
 
 @mcp.tool(title="Insert or append an HTML table to Docling document")
@@ -567,11 +530,6 @@ def add_table_in_html_format_to_docling_document(
     if not shared.document:
         raise ValueError(
             "Document has not been initialized. Please load a document first."
-        )
-
-    if len(stack_cache) == 0:
-        raise ValueError(
-            "Stack size is zero for the shared Docling Document. Abort document generation"
         )
     
     html_doc: str = f"<html><body>{html_table}</body></html>"
@@ -615,7 +573,7 @@ def add_table_in_html_format_to_docling_document(
                 caption = shared.document.insert_text(label=DocItemLabel.CAPTION, text=_, sibling=table, after=insert_after)
                 table.captions.insert(0, caption.get_ref())
 
-            return DocumentUpdateOutput(shared.document.export_to_dict())
+            return DocumentUpdateOutput(shared.document.export_to_dict(), table.self_ref)
         if parent_anchor:
             try:
                 parent = resolve(parent_anchor)
@@ -640,16 +598,8 @@ def add_table_in_html_format_to_docling_document(
                 footnote = shared.document.add_text(label=DocItemLabel.FOOTNOTE, text=_, parent=parent)
                 table.footnotes.append(footnote.get_ref())
 
-            return DocumentUpdateOutput(shared.document.export_to_dict())
+            return DocumentUpdateOutput(shared.document.export_to_dict(), table.self_ref)
         
-        parent = stack_cache[-1]
-
-        if isinstance(parent, GroupItem):
-            if parent.label == GroupLabel.LIST or parent.label == GroupLabel.ORDERED_LIST:
-                raise ValueError(
-                    "A list is currently opened. Please close the list before adding a table!"
-                )
-
         table = shared.document.add_table(data=conv_result.document.tables[0].data)
 
         for _ in table_captions or []:
@@ -660,9 +610,7 @@ def add_table_in_html_format_to_docling_document(
             footnote = shared.document.add_text(label=DocItemLabel.FOOTNOTE, text=_)
             table.footnotes.append(footnote.get_ref())
 
-        stack_cache[-1] = table
-
-        return DocumentUpdateOutput(shared.document.export_to_dict())
+        return DocumentUpdateOutput(shared.document.export_to_dict(), table.self_ref)
     else:
         raise ValueError(
             "Could not parse the html string of the table! Please fix the html and try again!"

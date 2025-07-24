@@ -46,14 +46,6 @@ async def upload_document(request: Request) -> None:
     if "document" in json_data:
         shared.document = DoclingDocument.model_validate(json_data["document"])
 
-        item = shared.document.add_text(
-            label=DocItemLabel.TEXT,
-            text=f"document uploaded: {datetime.now()}",
-            content_layer=ContentLayer.FURNITURE,
-        )
-
-        shared.stack_cache = [item]
-
         return JSONResponse(
             content={"message": "Document uploaded successfully."},
             status_code=200,
